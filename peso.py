@@ -43,8 +43,10 @@ peso_f = 0
 fecha_hora = datetime.now().strftime('%Y%m%d_%H%M%S')
 
 # Ruta de memoria USB para guardar copia de datos
-ruta_usb = f'/media/esisco/USB/{fecha_hora}_datos_pesaje.csv'
-
+nombre_archivo = f'{fecha_hora}_datos_pesaje.csv'
+ruta_usb = f'/media/esisco/USB/'
+ruta_auxiliar = f'/home/esisco/DATA/'
+ruta_data = ''
 datos = []
 
 # Configuracion de GPIO
@@ -74,7 +76,7 @@ context = ModbusServerContext(slaves={3: store}, single=False)
 def start_data_usb():
     try:
         datos.append(['FECHA', 'HORA','PESADA' ,'LOTE', 'PESO'])
-        with open(ruta_usb, mode='w', newline='') as file_csv:
+        with open(ruta_data, mode='w', newline='') as file_csv:
             escritor_csv = csv.writer(file_csv)
             escritor_csv.writerows(datos)
     except Exception as e:
@@ -91,15 +93,17 @@ def send_data_serial(data):
         print(f"Error al enviar datos por el puerto serial: {e}", flush=True)
 
 # Funcion para guardar datos en memoria USB
-def save_data_usb(lote, peso, conteo):
+def save_data_usb(lote, peso, conteo):     
     peso_f = peso/10;
     try:
         fecha = datetime.now().strftime('%Y-%m-%d')
         hora = datetime.now().strftime('%H:%M:%S')
         datos.append([fecha, hora, conteo, lote, peso_f])
-        with open(ruta_usb, mode='w', newline='') as file_csv:
+        
+        with open(ruta_data, mode='w', newline='') as file_csv:
             escritor_csv = csv.writer(file_csv)
             escritor_csv.writerows(datos)
+            pass
     except Exception as e:
         print(f"Error: {str(e)}", flush=True)
         traceback.print_exc()
@@ -182,6 +186,16 @@ if __name__ == "__main__":
         server_thread.start()
 
         print("Started..\n", flush=True)
+        
+        directorio = os.path.dirname(ruta_usb)
+        
+        if not os.path.exists(directorio):
+            if not os.path.exists(ruta_auxiliar):
+                os.makedirs(ruta_auxiliar)
+            ruta_data = ruta_auxiliar+nombre_archivo
+        else:
+            ruta_data = ruta_usb+nombre_archivo
+            
         start_data_usb()
 
         display_received_data()
