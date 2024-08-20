@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+## 2024-08-20 
+
 from pymodbus.server import StartSerialServer
 from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext, ModbusSequentialDataBlock
 from pymodbus.transaction import ModbusRtuFramer
@@ -11,8 +13,12 @@ import RPi.GPIO as GPIO
 import serial
 import os
 import sys
+import csv
+from datetime import datetime
 
 import traceback
+
+#getcontext().prec = 1
 
 os.system("sudo fuser -k /dev/ttySC0")
 timer = time.time()
@@ -32,6 +38,14 @@ p_alarma = 27
 serial_port_1 = '/dev/ttySC0'
 serial_port_2 = '/dev/ttySC1'
 baudrate = 9600
+peso_f = 0
+
+fecha_hora = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+# Ruta de memoria USB para guardar copia de datos
+ruta_usb = f'/media/esisco/USB/{fecha_hora}_datos_pesaje.csv'
+
+datos = []
 
 # Configuracion de GPIO
 GPIO.setmode(GPIO.BCM)
@@ -56,6 +70,17 @@ store = ModbusSlaveContext(
 #context = ModbusServerContext(slaves=store, single=True)
 context = ModbusServerContext(slaves={3: store}, single=False)
 
+# Iniciar archivo CSV oara guarda datos 
+def start_data_usb():
+    try:
+        datos.append(['FECHA', 'HORA','PESADA' ,'LOTE', 'PESO'])
+        with open(ruta_usb, mode='w', newline='') as file_csv:
+            escritor_csv = csv.writer(file_csv)
+            escritor_csv.writerows(datos)
+    except Exception as e:
+        print(f"Error: {str(e)}", flush=True)
+        traceback.print_exc()
+
 # Funcion para enviar datos por el puerto serial
 def send_data_serial(data):
     try:
@@ -65,22 +90,22 @@ def send_data_serial(data):
     except serial.SerialException as e:
         print(f"Error al enviar datos por el puerto serial: {e}", flush=True)
 
+# Funcion para guardar datos en memoria USB
+def save_data_usb(lote, peso, conteo):
+    peso_f = peso/10;
+    try:
+        fecha = datetime.now().strftime('%Y-%m-%d')
+        hora = datetime.now().strftime('%H:%M:%S')
+        datos.append([fecha, hora, conteo, lote, peso_f])
+        with open(ruta_usb, mode='w', newline='') as file_csv:
+            escritor_csv = csv.writer(file_csv)
+            escritor_csv.writerows(datos)
+    except Exception as e:
+        print(f"Error: {str(e)}", flush=True)
+        traceback.print_exc()
+        
 # Actualizar estado de salidas digitales
 def update_gpio_status(data):
-    """
-    if data == 1:
-        GPIO.output(p_compuerta, True)
-        GPIO.output(p_alarma, False)
-    if data == 2:
-        GPIO.output(p_compuerta, False)
-        GPIO.output(p_alarma, True)
-    if data == 3:
-        GPIO.output(p_compuerta, True)
-        GPIO.output(p_alarma, True)
-    if data == 0:
-        GPIO.output(p_compuerta, False)
-        GPIO.output(p_alarma, False)
-    """
     compuerta = GPIO.input(p_compuerta)
     alarma = GPIO.input(p_alarma)
 
@@ -97,9 +122,9 @@ def display_received_data():
         time.sleep(0.3)  # Esperar un x segs antes de la siguiente verificacion
         
         # Leer los registros actuales del esclavo con ID 3 contex[3] 
-        current_data = context[3].getValues(3, 0, count=4)
+        current_data = context[3].getValues(3, 0, count=5)
         
-        if len(current_data) < 4:
+        if len(current_data) < 5:
             print("Advertencia: Numero insuficiente de datos recibidos.", flush=True)
             continue  # Saltar a la siguiente iteracion del bucle
         
@@ -113,11 +138,13 @@ def display_received_data():
             save = current_data[1]
             peso = current_data[2]
             lote = current_data[3]
+            conteo = current_data[4]
             salidas = current_data[0]
             
             if save == 1: 
                 #if time.time() > timer:
                 send_data_serial(f"{peso}, {lote}!")
+                save_data_usb(lote, peso, conteo)
                 #timer = time.time() + 5
                  
             update_gpio_status(salidas)
@@ -155,6 +182,7 @@ if __name__ == "__main__":
         server_thread.start()
 
         print("Started..\n", flush=True)
+        start_data_usb()
 
         display_received_data()
 
