@@ -84,10 +84,10 @@ def start_data_usb():
         traceback.print_exc()
 
 # Funcion para enviar datos por el puerto serial
-def send_data_serial(data):
+def send_data_serial(lote, peso):
     try:
         with serial.Serial(serial_port_2, baudrate, timeout=1) as ser:
-            ser.write(f"{data}\r\n".encode())
+            ser.write(f"{lote}, {peso}!\r\n".encode())
         print(f"Datos enviados: {data}", flush=True)
     except serial.SerialException as e:
         print(f"Error al enviar datos por el puerto serial: {e}", flush=True)
@@ -147,7 +147,7 @@ def display_received_data():
             
             if save == 1: 
                 #if time.time() > timer:
-                send_data_serial(f"{lote},{peso}!")
+                send_data_serial(lote,peso")
                 save_data_usb(lote, peso, conteo)
                 #timer = time.time() + 5
                  
