@@ -147,7 +147,7 @@ def display_received_data():
             
             if save == 1: 
                 #if time.time() > timer:
-                send_data_serial(f"{lote}, {peso}!")
+                send_data_serial(f"{lote},{peso}!")
                 save_data_usb(lote, peso, conteo)
                 #timer = time.time() + 5
                  
