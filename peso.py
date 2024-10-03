@@ -87,7 +87,7 @@ def start_data_usb():
 def send_data_serial(data):
     try:
         with serial.Serial(serial_port_2, baudrate, timeout=1) as ser:
-            ser.write(f"{data}\n".encode())
+            ser.write(f"{data}\r\n".encode())
         print(f"Datos enviados: {data}", flush=True)
     except serial.SerialException as e:
         print(f"Error al enviar datos por el puerto serial: {e}", flush=True)
@@ -121,14 +121,14 @@ def update_gpio_status(data):
    
 # Funcion para mostrar datos recibidos
 def display_received_data():
-    old_data = [0] * 4  # Almacena los datos anteriores para detectar cambios
+    old_data = [0] * 6  # Almacena los datos anteriores para detectar cambios
     while True:
         time.sleep(0.3)  # Esperar un x segs antes de la siguiente verificacion
         
         # Leer los registros actuales del esclavo con ID 3 contex[3] 
-        current_data = context[3].getValues(3, 0, count=5)
+        current_data = context[3].getValues(3, 0, count=6)
         
-        if len(current_data) < 5:
+        if len(current_data) < 6:
             print("Advertencia: Numero insuficiente de datos recibidos.", flush=True)
             continue  # Saltar a la siguiente iteracion del bucle
         
@@ -139,7 +139,7 @@ def display_received_data():
             print(f"{current_data}", flush=True)
             old_data = current_data  # Actualizar los datos anteriores    
 
-            save = current_data[1]
+            save = current_data[5]
             peso = current_data[2]
             lote = current_data[3]
             conteo = current_data[4]
@@ -147,13 +147,13 @@ def display_received_data():
             
             if save == 1: 
                 #if time.time() > timer:
-                send_data_serial(f"{peso}, {lote}!")
+                send_data_serial(f"{lote}, {peso}!")
                 save_data_usb(lote, peso, conteo)
                 #timer = time.time() + 5
                  
             update_gpio_status(salidas)
             
-            print(f"Peso: {current_data[2]} -- Lote: {current_data[3]} -- Envio:{current_data[1]}", flush=True)
+            print(f"Peso: {current_data[2]} -- Lote: {current_data[3]} -- Envio:{current_data[5]}", flush=True)
             print("---------------------------------------------\n", flush=True)
             
 # Definicion del servidor esclavo Modbus RTU
